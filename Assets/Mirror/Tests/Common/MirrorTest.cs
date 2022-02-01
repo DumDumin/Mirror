@@ -82,8 +82,11 @@ namespace Mirror.Tests
             where T : NetworkBehaviour
         {
             go = new GameObject();
-            identity = go.AddComponent<NetworkIdentity>();
             component = go.AddComponent<T>();
+            if (!go.TryGetComponent<NetworkIdentity>(out identity))
+            {
+                identity = go.AddComponent<NetworkIdentity>();
+            }
             // always set syncinterval = 0 for immediate testing
             component.syncInterval = 0;
             // Awake is only called in play mode.
@@ -100,9 +103,12 @@ namespace Mirror.Tests
             where U : NetworkBehaviour
         {
             go = new GameObject();
-            identity = go.AddComponent<NetworkIdentity>();
             componentA = go.AddComponent<T>();
             componentB = go.AddComponent<U>();
+            if (!go.TryGetComponent<NetworkIdentity>(out identity))
+            {
+                identity = go.AddComponent<NetworkIdentity>();
+            }
             // always set syncinterval = 0 for immediate testing
             componentA.syncInterval = 0;
             componentB.syncInterval = 0;
@@ -121,10 +127,13 @@ namespace Mirror.Tests
             where V : NetworkBehaviour
         {
             go = new GameObject();
-            identity = go.AddComponent<NetworkIdentity>();
             componentA = go.AddComponent<T>();
             componentB = go.AddComponent<U>();
             componentC = go.AddComponent<V>();
+            if (!go.TryGetComponent<NetworkIdentity>(out identity))
+            {
+                identity = go.AddComponent<NetworkIdentity>();
+            }
             // always set syncinterval = 0 for immediate testing
             componentA.syncInterval = 0;
             componentB.syncInterval = 0;
