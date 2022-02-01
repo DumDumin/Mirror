@@ -375,6 +375,78 @@ namespace Mirror.Tests
             Assert.That(NetworkClient.spawned.ContainsKey(serverIdentity.netId));
         }
 
+        protected void CreatePrefabNetworked<T>(out GameObject go, out NetworkIdentity identity, out T component, GameObject prefab)
+            where T : NetworkBehaviour
+        {
+            go = GameObject.Instantiate(prefab);
+            component = go.GetComponent<T>();
+            if (!go.TryGetComponent<NetworkIdentity>(out identity))
+            {
+                Debug.LogWarning("Add new NetworkIdentity");
+                identity = go.AddComponent<NetworkIdentity>();
+            }
+            // always set syncinterval = 0 for immediate testing
+            component.syncInterval = 0;
+            // Prefabs call Awake() by themself
+            // identity.Awake();
+            // track
+            instantiated.Add(go);
+        }
+
+        protected void CreatePrefabNetworkedAndSpawn<T>(
+            out GameObject serverGO, out T componentServer,
+            out GameObject clientGO, out T componentClient,
+            GameObject prefab, NetworkConnection ownerConnection = null) where T : NetworkBehaviour
+        {
+            // server & client need to be active before spawning
+            Debug.Assert(NetworkClient.active, "NetworkClient needs to be active before spawning.");
+            Debug.Assert(NetworkServer.active, "NetworkServer needs to be active before spawning.");
+
+            // create one on server, one on client
+            // (spawning has to find it on client, it doesn't create it)
+            CreatePrefabNetworked<T>(out serverGO, out NetworkIdentity serverIdentity, out componentServer, prefab);
+            CreatePrefabNetworked<T>(out clientGO, out NetworkIdentity clientIdentity, out componentClient, prefab);
+
+            // give both a scene id and register it on client for spawnables
+            clientIdentity.sceneId = serverIdentity.sceneId = (ulong)serverGO.GetHashCode();
+            NetworkClient.spawnableObjects[clientIdentity.sceneId] = clientIdentity;
+
+            // spawn
+            NetworkServer.Spawn(serverGO, ownerConnection);
+            ProcessMessages();
+
+            // double check that we have authority if we passed an owner connection
+            if (ownerConnection != null)
+                Debug.Assert(componentServer.hasAuthority == true, $"Behaviour Had Wrong Authority when spawned, This means that the test is broken and will give the wrong results");
+
+            // make sure the client really spawned it.
+            Assert.That(NetworkClient.spawned.ContainsKey(serverIdentity.netId));
+        }
+
+        protected void CreatePrefabNetworkedAndSpawn<T>(
+            out GameObject serverGO, out T componentServer,
+            GameObject prefab, NetworkConnection ownerConnection = null) where T : NetworkBehaviour
+        {
+            // server & client need to be active before spawning
+            Debug.Assert(NetworkClient.active, "NetworkClient needs to be active before spawning.");
+            Debug.Assert(NetworkServer.active, "NetworkServer needs to be active before spawning.");
+
+            // create one on server, one on client
+            // (spawning has to find it on client, it doesn't create it)
+            CreatePrefabNetworked<T>(out serverGO, out NetworkIdentity serverIdentity, out componentServer, prefab);
+
+            // spawn
+            NetworkServer.Spawn(serverGO, ownerConnection);
+            ProcessMessages();
+
+            // double check that we have authority if we passed an owner connection
+            // if (ownerConnection != null)
+            //     Debug.Assert(componentServer.hasAuthority == true, $"Behaviour Had Wrong Authority when spawned, This means that the test is broken and will give the wrong results");
+
+            // make sure the client really spawned it.
+            Assert.That(NetworkClient.spawned.ContainsKey(serverIdentity.netId));
+        }
+
         // create GameObject + NetworkIdentity + NetworkBehaviour & SPAWN PLAYER.
         // often times, we really need a player object for the client to receive
         // certain messages.
